@@ -1,85 +1,48 @@
 from flask import Flask, render_template, request, jsonify
 import os
-import re
+import anthropic
 
 app = Flask(__name__)
 
-# Sanskrit-English-Hindi Dictionary
-SANSKRIT_DICTIONARY = {
-    "ॐ": {"english": "Om", "hindi": "ओम", "meaning": "The sacred sound of the universe, representing the divine energy"},
-    "शांति": {"english": "Peace/Shanti", "hindi": "शांति", "meaning": "Peace, tranquility, and harmony"},
-    "शक्ति": {"english": "Strength/Shakti", "hindi": "शक्ति", "meaning": "Divine feminine energy, power, and strength"},
-    "प्रेम": {"english": "Love/Prem", "hindi": "प्रेम", "meaning": "Divine love and compassion"},
-    "सत्य": {"english": "Truth/Satya", "hindi": "सत्य", "meaning": "Truth, authenticity, and reality"},
-    "आत्मा": {"english": "Soul/Atma", "hindi": "आत्मा", "meaning": "The eternal self or soul within all beings"},
-    "मन": {"english": "Mind/Man", "hindi": "मन", "meaning": "Mind, consciousness, and intellect"},
-    "हृदय": {"english": "Heart/Hridaya", "hindi": "हृदय", "meaning": "Heart, the seat of emotions and compassion"},
-    "ब्रह्म": {"english": "Brahman/Brahm", "hindi": "ब्रह्म", "meaning": "The ultimate reality, universal consciousness"},
-    "देव": {"english": "Divine/Dev", "hindi": "देव", "meaning": "God, divinity, celestial being"},
-    "मंत्र": {"english": "Mantra/Mantr", "hindi": "मंत्र", "meaning": "Sacred sound or phrase with spiritual power"},
-    "योग": {"english": "Union/Yoga", "hindi": "योग", "meaning": "Union of individual soul with universal consciousness, yoga practice"},
-    "ध्यान": {"english": "Meditation/Dhyan", "hindi": "ध्यान", "meaning": "Meditation, deep concentration and contemplation"},
-    "तप": {"english": "Austerity/Tap", "hindi": "तप", "meaning": "Spiritual discipline and austerity for self-purification"},
-    "कर्म": {"english": "Action/Karma", "hindi": "कर्म", "meaning": "Action and its consequences, the law of cause and effect"},
-    "धर्म": {"english": "Duty/Dharma", "hindi": "धर्म", "meaning": "Righteousness, duty, and cosmic order"},
-    "मोक्ष": {"english": "Liberation/Moksh", "hindi": "मोक्ष", "meaning": "Liberation from the cycle of birth and death"},
-    "आनंद": {"english": "Bliss/Anand", "hindi": "आनंद", "meaning": "Supreme bliss and eternal joy"},
-    "गुरु": {"english": "Guru/Teacher", "hindi": "गुरु", "meaning": "Spiritual teacher and guide"},
-    "नमस्ते": {"english": "Namaste", "hindi": "नमस्ते", "meaning": "Respectful greeting meaning 'I bow to you'"},
-}
+# Initialize Anthropic client
+api_key = os.environ.get("ANTHROPIC_API_KEY")
+client = anthropic.Anthropic(api_key=api_key) if api_key else None
 
-def extract_sanskrit_words(text):
-    """Extract Sanskrit words from text"""
-    sanskrit_pattern = r'[\u0900-\u097F]+'
-    matches = re.findall(sanskrit_pattern, text)
-    return matches
+def translate_with_ai(text):
+    """Use Claude AI to translate Sanskrit text with detailed explanations"""
+    
+    if not client:
+        return "Error: ANTHROPIC_API_KEY not configured. Please add your API key in the environment variables."
+    
+    try:
+        message = client.messages.create(
+            model="claude-3-5-sonnet-20241022",
+            max_tokens=1024,
+            messages=[
+                {
+                    "role": "user",
+                    "content": f"""You are an expert Sanskrit translator and spiritual scholar. 
+                    
+Please analyze and translate the following Sanskrit text:
 
-def translate_sanskrit(text):
-    """Translate Sanskrit text to English and Hindi with explanations"""
-    
-    # Check if text contains Sanskrit characters
-    is_sanskrit = any('\u0900' <= c <= '\u097F' for c in text)
-    
-    if not is_sanskrit:
-        return None
-    
-    # Extract Sanskrit words
-    words = extract_sanskrit_words(text)
-    
-    if not words:
-        return None
-    
-    translations = []
-    
-    for word in words:
-        if word in SANSKRIT_DICTIONARY:
-            entry = SANSKRIT_DICTIONARY[word]
-            translations.append({
-                "sanskrit": word,
-                "english": entry["english"],
-                "hindi": entry["hindi"],
-                "meaning": entry["meaning"]
-            })
-    
-    return translations if translations else None
+"{text}"
 
-def create_translation_response(text):
-    """Create a formatted response with translations"""
-    
-    translations = translate_sanskrit(text)
-    
-    if not translations:
-        return "I could not detect Sanskrit text in your input. Please provide a Sanskrit mantra or text for translation."
-    
-    response = "## Sanskrit Translation & Analysis\n\n"
-    
-    for i, translation in enumerate(translations, 1):
-        response += f"### Word {i}: **{translation['sanskrit']}**\n"
-        response += f"**English:** {translation['english']}\n"
-        response += f"**Hindi:** {translation['hindi']}\n"
-        response += f"**Meaning:** {translation['meaning']}\n\n"
-    
-    return response
+Provide:
+1. Word-by-word Sanskrit breakdown
+2. English translation
+3. Hindi translation
+4. Detailed explanation of the meaning and spiritual significance
+5. Context about where this mantra/text comes from if applicable
+
+Format your response clearly with sections for each part. Be thorough and accurate."""
+                }
+            ]
+        )
+        
+        return message.content[0].text
+        
+    except anthropic.APIError as e:
+        return f"Translation Error: {str(e)}. Please check your API key configuration."
 
 @app.route("/")
 def index():
@@ -93,16 +56,23 @@ def chat():
     
     last_msg = messages[-1]["content"] if messages else ""
     
-    # Process the message for translation
-    reply = create_translation_response(last_msg)
+    if not last_msg:
+        return jsonify({
+            "success": False,
+            "reply": "Please provide Sanskrit text to translate."
+        })
     
-    # If no Sanskrit was found, provide helpful guidance
-    if "could not detect" in reply:
-        reply += "\n\n**How to use:**\n"
-        reply += "- **Scan an image:** Click the camera icon to scan Sanskrit text from an image\n"
-        reply += "- **Type text:** Enter Sanskrit text directly\n"
-        reply += "- **Upload image:** Click the upload icon to upload an image file\n\n"
-        reply += "I can help you translate Sanskrit mantras and texts with detailed explanations in English and Hindi."
+    # Check if text contains Sanskrit characters
+    is_sanskrit = any('\u0900' <= c <= '\u097F' for c in last_msg)
+    
+    if not is_sanskrit:
+        return jsonify({
+            "success": False,
+            "reply": "Please provide Sanskrit text. I can translate Sanskrit mantras, shlokas, and other texts with detailed explanations in English and Hindi."
+        })
+    
+    # Use AI to translate
+    reply = translate_with_ai(last_msg)
         
     return jsonify({
         "success": True,
