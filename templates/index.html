@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sanskrit Mantra Scanner</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600&display=swap" rel="stylesheet">
+</head>
+
+<body>
+    <div class="app-container">
+
+        <header class="app-header">
+            <div class="logo-area">
+                <div class="logo-icon">ॐ</div>
+                <h1>Sanskrit Scanner</h1>
+            </div>
+            <p class="subtitle">Scan Sanskrit texts to instantly receive English & Hindi meanings</p>
+        </header>
+
+        <main class="scanner-section">
+            <div class="video-container" id="video-container">
+                <video id="videoElement" autoplay playsinline></video>
+                <div class="scanning-overlay" id="scanning-overlay">
+                    <div class="scan-line"></div>
+                </div>
+            </div>
+
+            <section class="chat-section" id="chat-section">
+                <div class="chat-window" id="chat-window">
+                    <div class="chat-message bot">
+                        <div class="message-content">
+                            Hello, welcome to the Sanskrit Mantra Converter. How can I assist you with your translation
+                            needs today?
+                        </div>
+                    </div>
+                </div>
+
+                <div class="chat-input-area">
+                    <button id="cameraToggleBtn" class="icon-btn" title="Scan with Camera">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z">
+                            </path>
+                            <circle cx="12" cy="13" r="4"></circle>
+                        </svg>
+                    </button>
+                    <label class="icon-btn" title="Upload Image">
+                        <input type="file" id="fileInput" accept="image/*" style="display: none;">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                            <polyline points="17 8 12 3 7 8"></polyline>
+                            <line x1="12" y1="3" x2="12" y2="15"></line>
+                        </svg>
+                    </label>
+                    <textarea id="chatInput" placeholder="Type a message or scan text..." rows="1"></textarea>
+                    <button id="sendBtn" class="send-btn">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <line x1="22" y1="2" x2="11" y2="13"></line>
+                            <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                        </svg>
+                    </button>
+                </div>
+            </section>
+
+    </div>
+
+    <!-- Tesseract.js -->
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+    <!-- Marked.js for markdown rendering in chat -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="{{ url_for('static', filename='app.js') }}"></script>
+</body>
+
+</html>
