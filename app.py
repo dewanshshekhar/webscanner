@@ -1,22 +1,22 @@
 from flask import Flask, render_template, request, jsonify
 import os
-import anthropic
+from openai import OpenAI
 
 app = Flask(__name__)
 
-# Initialize Anthropic client
-api_key = os.environ.get("ANTHROPIC_API_KEY")
-client = anthropic.Anthropic(api_key=api_key) if api_key else None
+# Initialize OpenAI client
+api_key = os.environ.get("OPENAI_API_KEY")
+client = OpenAI(api_key=api_key) if api_key else None
 
 def translate_with_ai(text):
-    """Use Claude AI to translate Sanskrit text with detailed explanations"""
+    """Use GPT to translate Sanskrit text with detailed explanations"""
     
     if not client:
-        return "Error: ANTHROPIC_API_KEY not configured. Please add your API key in the environment variables."
+        return "Error: OPENAI_API_KEY not configured. Please add your API key in the environment variables."
     
     try:
-        message = client.messages.create(
-            model="claude-3-5-sonnet-20241022",
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
             max_tokens=1024,
             messages=[
                 {
@@ -39,9 +39,9 @@ Format your response clearly with sections for each part. Be thorough and accura
             ]
         )
         
-        return message.content[0].text
+        return response.choices[0].message.content
         
-    except anthropic.APIError as e:
+    except Exception as e:
         return f"Translation Error: {str(e)}. Please check your API key configuration."
 
 @app.route("/")
