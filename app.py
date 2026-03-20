@@ -1,7 +1,85 @@
 from flask import Flask, render_template, request, jsonify
 import os
+import re
 
 app = Flask(__name__)
+
+# Sanskrit-English-Hindi Dictionary
+SANSKRIT_DICTIONARY = {
+    "ॐ": {"english": "Om", "hindi": "ओम", "meaning": "The sacred sound of the universe, representing the divine energy"},
+    "शांति": {"english": "Peace/Shanti", "hindi": "शांति", "meaning": "Peace, tranquility, and harmony"},
+    "शक्ति": {"english": "Strength/Shakti", "hindi": "शक्ति", "meaning": "Divine feminine energy, power, and strength"},
+    "प्रेम": {"english": "Love/Prem", "hindi": "प्रेम", "meaning": "Divine love and compassion"},
+    "सत्य": {"english": "Truth/Satya", "hindi": "सत्य", "meaning": "Truth, authenticity, and reality"},
+    "आत्मा": {"english": "Soul/Atma", "hindi": "आत्मा", "meaning": "The eternal self or soul within all beings"},
+    "मन": {"english": "Mind/Man", "hindi": "मन", "meaning": "Mind, consciousness, and intellect"},
+    "हृदय": {"english": "Heart/Hridaya", "hindi": "हृदय", "meaning": "Heart, the seat of emotions and compassion"},
+    "ब्रह्म": {"english": "Brahman/Brahm", "hindi": "ब्रह्म", "meaning": "The ultimate reality, universal consciousness"},
+    "देव": {"english": "Divine/Dev", "hindi": "देव", "meaning": "God, divinity, celestial being"},
+    "मंत्र": {"english": "Mantra/Mantr", "hindi": "मंत्र", "meaning": "Sacred sound or phrase with spiritual power"},
+    "योग": {"english": "Union/Yoga", "hindi": "योग", "meaning": "Union of individual soul with universal consciousness, yoga practice"},
+    "ध्यान": {"english": "Meditation/Dhyan", "hindi": "ध्यान", "meaning": "Meditation, deep concentration and contemplation"},
+    "तप": {"english": "Austerity/Tap", "hindi": "तप", "meaning": "Spiritual discipline and austerity for self-purification"},
+    "कर्म": {"english": "Action/Karma", "hindi": "कर्म", "meaning": "Action and its consequences, the law of cause and effect"},
+    "धर्म": {"english": "Duty/Dharma", "hindi": "धर्म", "meaning": "Righteousness, duty, and cosmic order"},
+    "मोक्ष": {"english": "Liberation/Moksh", "hindi": "मोक्ष", "meaning": "Liberation from the cycle of birth and death"},
+    "आनंद": {"english": "Bliss/Anand", "hindi": "आनंद", "meaning": "Supreme bliss and eternal joy"},
+    "गुरु": {"english": "Guru/Teacher", "hindi": "गुरु", "meaning": "Spiritual teacher and guide"},
+    "नमस्ते": {"english": "Namaste", "hindi": "नमस्ते", "meaning": "Respectful greeting meaning 'I bow to you'"},
+}
+
+def extract_sanskrit_words(text):
+    """Extract Sanskrit words from text"""
+    sanskrit_pattern = r'[\u0900-\u097F]+'
+    matches = re.findall(sanskrit_pattern, text)
+    return matches
+
+def translate_sanskrit(text):
+    """Translate Sanskrit text to English and Hindi with explanations"""
+    
+    # Check if text contains Sanskrit characters
+    is_sanskrit = any('\u0900' <= c <= '\u097F' for c in text)
+    
+    if not is_sanskrit:
+        return None
+    
+    # Extract Sanskrit words
+    words = extract_sanskrit_words(text)
+    
+    if not words:
+        return None
+    
+    translations = []
+    
+    for word in words:
+        if word in SANSKRIT_DICTIONARY:
+            entry = SANSKRIT_DICTIONARY[word]
+            translations.append({
+                "sanskrit": word,
+                "english": entry["english"],
+                "hindi": entry["hindi"],
+                "meaning": entry["meaning"]
+            })
+    
+    return translations if translations else None
+
+def create_translation_response(text):
+    """Create a formatted response with translations"""
+    
+    translations = translate_sanskrit(text)
+    
+    if not translations:
+        return "I could not detect Sanskrit text in your input. Please provide a Sanskrit mantra or text for translation."
+    
+    response = "## Sanskrit Translation & Analysis\n\n"
+    
+    for i, translation in enumerate(translations, 1):
+        response += f"### Word {i}: **{translation['sanskrit']}**\n"
+        response += f"**English:** {translation['english']}\n"
+        response += f"**Hindi:** {translation['hindi']}\n"
+        response += f"**Meaning:** {translation['meaning']}\n\n"
+    
+    return response
 
 @app.route("/")
 def index():
@@ -13,19 +91,18 @@ def chat():
     data = request.json
     messages = data.get("messages", [])
     
-    # In a full production app, this would forward the conversation to an LLM
-    # like OpenAI GPT-4 or the real omnidimension text integration.
-    # For now, we simulate an intelligent agent response.
-    
     last_msg = messages[-1]["content"] if messages else ""
     
-    # Simple logic to simulate agent
-    is_sanskrit = any('\u0900' <= c <= '\u097F' for c in last_msg)
+    # Process the message for translation
+    reply = create_translation_response(last_msg)
     
-    if is_sanskrit or "scan" in last_msg.lower():
-        reply = "यह एक संस्कृत मंत्र है। (This is a Sanskrit mantra.)\n\n**English Meaning**: Let peace be everywhere.\n**Hindi Meaning**: हर जगह शांति हो।"
-    else:
-        reply = "Thank you for reaching out to the Sanskrit Mantra Converter! How can I help you today? You can type a mantra or scan an image."
+    # If no Sanskrit was found, provide helpful guidance
+    if "could not detect" in reply:
+        reply += "\n\n**How to use:**\n"
+        reply += "- **Scan an image:** Click the camera icon to scan Sanskrit text from an image\n"
+        reply += "- **Type text:** Enter Sanskrit text directly\n"
+        reply += "- **Upload image:** Click the upload icon to upload an image file\n\n"
+        reply += "I can help you translate Sanskrit mantras and texts with detailed explanations in English and Hindi."
         
     return jsonify({
         "success": True,
